@@ -1,0 +1,57 @@
+FROM ubuntu:latest
+
+MAINTAINER My Name <email@company.com>
+
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
+
+ADD Container-Root /
+
+RUN export http_proxy=$http_proxy; export https_proxy=$https_proxy; export no_proxy=$no_proxy; /setup.sh; rm -f /setup.sh
+
+# Install wget
+RUN apt-get update -y && apt-get install -y \
+    wget \
+    cmake \
+    libopenmpi-dev \
+    zlib1g-dev \
+    build-essential \
+    vim \
+    subversion \
+    python3-pip \
+    python3-dev \
+    python3-setuptools \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && cd /usr/local/bin \
+    && ln -s /usr/bin/python3 python \
+    && pip3 install --upgrade pip
+
+# Install glpk from http
+# instructions and documentation for glpk: http://www.gnu.org/software/glpk/
+ WORKDIR /usr/local/
+ RUN wget http://ftp.gnu.org/gnu/glpk/glpk-4.57.tar.gz \
+    && tar -zxvf glpk-4.57.tar.gz
+
+## Verify package contents
+# RUN wget http://ftp.gnu.org/gnu/glpk/glpk-4.57.tar.gz.sig \
+#    && gpg --verify glpk-4.57.tar.gz.sig
+#    #&& gpg --keyserver keys.gnupg.net --recv-keys 5981E818
+
+WORKDIR /usr/local/glpk-4.57
+RUN ./configure \
+    && make \
+    && make check \
+    && make install \
+    && make distclean \
+    && ldconfig \
+    && rm -rf /user/local/glpk-4.57.tar.gz \
+    && apt-get clean
+
+# Manual requirements
+RUN pip3 install -r /requirements.txt
+
+WORKDIR /workdir/src/
+
+CMD /startup.sh
